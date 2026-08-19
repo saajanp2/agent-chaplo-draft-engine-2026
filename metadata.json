@@ -1,0 +1,6 @@
+{
+  "name": "2026 Fantasy Football Data Engine",
+  "description": "A high-correlation Top 200 list that identifies Market Gaps across Yahoo, ESPN, and Sleeper.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

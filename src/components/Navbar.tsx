@@ -1,160 +1,58 @@
 import React from 'react';
-import { User } from 'firebase/auth';
 import { 
-  Sheet, 
-  RefreshCw, 
-  LogIn, 
-  LogOut, 
   Trophy, 
-  Users, 
-  Plus, 
+  Settings, 
   RotateCcw, 
-  FolderOpen,
-  Target
+  Undo2, 
+  Download, 
+  Clock, 
+  Grid, 
+  Users, 
+  Sparkles, 
+  Scale, 
+  CheckCircle2 
 } from 'lucide-react';
-
-export interface PresetFilterOption {
-  id: string;
-  label: string;
-  shortLabel: string;
-  description: string;
-  icon?: string;
-  badge?: string;
-}
-
-export const DRAFT_PRESETS: PresetFilterOption[] = [
-  { 
-    id: 'all', 
-    label: 'All Players', 
-    shortLabel: 'All', 
-    description: 'Complete 2026 database with full projected ranks and live market ADP.' 
-  },
-  { 
-    id: 'team_need', 
-    label: '🎯 Team Need (Smart Best Fit)', 
-    shortLabel: '🎯 Team Need', 
-    description: 'Dynamically prioritizes players filling your immediate starting roster holes & greatest positional gaps.',
-    badge: 'AI RECOMMENDATION'
-  },
-  { 
-    id: 'phase_auto', 
-    label: '⚡ Current Draft Phase (Auto)', 
-    shortLabel: '⚡ Auto Phase', 
-    description: 'Dynamically shifts focus based on current draft round (Anchors -> Core Starters -> Market Gaps -> Sleepers).' 
-  },
-  { 
-    id: 'phase_early', 
-    label: '🛡️ Phase 1: Anchors (R1–3)', 
-    shortLabel: '🛡️ Phase 1 (R1-3)', 
-    description: 'Foundation elite assets: bellcow RBs, alpha WR1s, and tier-1 dual-threat QBs.' 
-  },
-  { 
-    id: 'phase_mid', 
-    label: '⚔️ Phase 2: Core Starters (R4–7)', 
-    shortLabel: '⚔️ Phase 2 (R4-7)', 
-    description: 'VORP maximizers: High-volume WR2s, starting RBs, and top-tier tight ends.' 
-  },
-  { 
-    id: 'phase_late', 
-    label: '🎯 Phase 3: Market Gaps (R8–11)', 
-    shortLabel: '🎯 Phase 3 (R8-11)', 
-    description: 'ADP Arbitrage: Target share and red-zone dominators undervalued by Yahoo/Sleeper.' 
-  },
-  { 
-    id: 'phase_deep', 
-    label: '💎 Phase 4: Sleepers (R12+)', 
-    shortLabel: '💎 Phase 4 (R12+)', 
-    description: 'Late-round league winners, handcuff bellcows, and massive market gaps (+10 ADP).' 
-  },
-  { 
-    id: 'high_gap', 
-    label: '📈 Market Arbitrage (+10 Gap)', 
-    shortLabel: '📈 Market Gaps', 
-    description: 'Players significantly underpriced by Yahoo and Sleeper relative to true predictive value.' 
-  },
-  { 
-    id: 'max_ppg', 
-    label: '⚡ Max Weekly Points (16+ PPG)', 
-    shortLabel: '⚡ Max PPG', 
-    description: 'Highest raw projected weekly fantasy points calibrated for 6-pt Pass TD, Half-PPR, and 2-FLEX starting slots.' 
-  },
-  { 
-    id: 'high_edge', 
-    label: '🔥 Championship Edge (70+)', 
-    shortLabel: '🔥 High Edge', 
-    description: 'Highest overall composite rating combining VORP, market gap, and ceiling equity.' 
-  },
-  { 
-    id: 'high_vorp', 
-    label: '👑 Top VORP Dominators (40+)', 
-    shortLabel: '👑 Top VORP', 
-    description: 'Players offering the largest raw points advantage above baseline positional starters.' 
-  },
-  { 
-    id: 'high_dropoff', 
-    label: '⚡ Positional Cliffs (1.5+ PPG Drop-off)', 
-    shortLabel: '⚡ Positional Cliffs', 
-    description: 'Dynamic drop-off: Players with the steepest projected point loss to the next available option on the live board.' 
-  },
-  { 
-    id: 'high_ceiling', 
-    label: '🚀 90th% Ceilings (20+ PPG)', 
-    shortLabel: '🚀 20+ PPG Ceiling', 
-    description: 'Explosive ceiling targets capable of individual week-winning spike weeks.' 
-  },
-  { 
-    id: 'red_zone', 
-    label: '🎯 Red Zone Monsters (18+ Touches)', 
-    shortLabel: '🎯 RZ Monsters', 
-    description: 'High-leverage goal line touches and red zone target dominators.' 
-  },
-];
+import { TeamConfig, ViewMode } from '../types';
 
 interface NavbarProps {
-  user: User | null;
-  isLoggingIn: boolean;
-  isSyncing: boolean;
-  onLogin: () => void;
-  onLogout: () => void;
-  onOpenSyncModal: () => void;
-  onSyncLiveSheet?: () => void;
-  onOpenDraftRoom: () => void;
-  onOpenSessionModal: () => void;
-  onStartNewDraft: () => void;
-  onHardRefresh: () => void;
-  savedSessionsCount: number;
-  myTeamCount: number;
-  activeFilterPreset: string;
-  onSelectFilterPreset: (preset: string) => void;
-  currentDraftPhaseName?: string;
-  currentTeamNeedName?: string;
+  currentPickIndex: number; // 0 to 179
+  activeTeam: TeamConfig;
+  currentRound: number; // 1 to 15
+  pickInRound: number; // 1 to 12
+  currentView: ViewMode;
+  onSelectView: (view: ViewMode) => void;
+  comparedCount: number;
+  onOpenDraftOrderModal: () => void;
+  onUndoPick: () => void;
+  canUndo: boolean;
+  onResetDraft: () => void;
+  onExportCSV: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  user,
-  isLoggingIn,
-  isSyncing,
-  onLogin,
-  onLogout,
-  onOpenSyncModal,
-  onSyncLiveSheet,
-  onOpenDraftRoom,
-  onOpenSessionModal,
-  onStartNewDraft,
-  onHardRefresh,
-  savedSessionsCount,
-  myTeamCount,
-  activeFilterPreset,
-  onSelectFilterPreset,
-  currentDraftPhaseName,
-  currentTeamNeedName,
+  currentPickIndex,
+  activeTeam,
+  currentRound,
+  pickInRound,
+  currentView,
+  onSelectView,
+  comparedCount,
+  onOpenDraftOrderModal,
+  onUndoPick,
+  canUndo,
+  onResetDraft,
+  onExportCSV,
 }) => {
+  const isDraftComplete = currentPickIndex >= 180;
+  const overallPickNumber = Math.min(180, currentPickIndex + 1);
+  const progressPercent = Math.round((currentPickIndex / 180) * 100);
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-neutral-800/80 bg-neutral-950/85 backdrop-blur-xl transition-all">
+    <header className="sticky top-0 z-40 w-full border-b border-neutral-800/80 bg-neutral-950/90 backdrop-blur-xl transition-all shadow-xl">
       <div className="mx-auto flex max-w-[1600px] w-full flex-col gap-2.5 px-3 py-2.5 sm:px-5 lg:px-6">
-        {/* Top Header Row */}
+        {/* Row 1: Logo & Branding + Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Logo & Title */}
+          {/* Logo & League Branding */}
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 shadow-md shadow-amber-500/20 ring-1 ring-amber-400/30">
               <Trophy className="h-4.5 w-4.5 text-neutral-950 stroke-[2.5]" />
@@ -162,169 +60,166 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-serif text-base sm:text-lg font-bold tracking-tight text-neutral-100">
-                  2026 Fantasy Data Engine
+                  Agent Chaplo 2026
                 </h1>
                 <span className="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-400 ring-1 ring-inset ring-amber-500/25">
-                  CHAMPIONSHIP V2.5
+                  BROWN BALLERS LIVE
                 </span>
               </div>
               <p className="text-[11px] text-neutral-400 hidden sm:block">
-                Predictive Analytics, Positional Scarcity & Cross-Market Inefficiencies
+                12 Teams • 0.5 PPR • 6-pt Pass TD • 2 FLEX • 15 Rounds (180 Picks)
               </p>
             </div>
           </div>
 
-          {/* Action Center: Google Sheets + Draft Controls + My Team */}
+          {/* Action Buttons Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Start New Draft Button */}
+            {/* Draft Order Modal */}
             <button
-              id="btn-new-draft"
-              onClick={onStartNewDraft}
-              className="flex items-center gap-1.5 rounded-lg bg-indigo-600/20 px-2.5 py-1.5 text-xs font-semibold text-indigo-300 ring-1 ring-indigo-500/40 hover:bg-indigo-600/30 transition-all shadow-sm"
-              title="Start a new clean draft (archives current draft)"
+              id="btn-draft-order"
+              onClick={onOpenDraftOrderModal}
+              className="flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all shadow-sm"
+              title="Customize 12-team draft slots & order"
             >
-              <Plus className="h-3.5 w-3.5 text-indigo-400" />
-              <span className="hidden sm:inline">New Draft</span>
+              <Settings className="h-3.5 w-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Draft Order</span>
             </button>
 
-            {/* Saved Draft Sessions & Hard Refresh Modal Button */}
+            {/* Undo Pick */}
             <button
-              id="btn-draft-sessions"
-              onClick={onOpenSessionModal}
-              className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-neutral-300 ring-1 ring-neutral-700/60 hover:bg-neutral-800 transition-all"
-              title="Manage Saved Drafts & Hard Refresh"
+              id="btn-undo-pick"
+              onClick={onUndoPick}
+              disabled={!canUndo}
+              className="flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+              title="Undo last pick made"
             >
-              <FolderOpen className="h-3.5 w-3.5 text-amber-400" />
-              <span className="hidden md:inline">Drafts</span>
-              {savedSessionsCount > 0 && (
-                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500/25 px-1 text-[9px] font-bold text-amber-300 ring-1 ring-amber-500/30">
-                  {savedSessionsCount}
-                </span>
-              )}
+              <Undo2 className="h-3.5 w-3.5 text-indigo-400" />
+              <span className="hidden sm:inline">Undo</span>
             </button>
 
-            {/* Quick Hard Refresh Button */}
+            {/* Reset Draft */}
             <button
-              id="btn-hard-refresh"
-              onClick={onHardRefresh}
-              className="flex items-center gap-1 rounded-lg bg-neutral-900 px-2 py-1.5 text-xs font-medium text-neutral-400 ring-1 ring-neutral-700/60 hover:bg-neutral-800 hover:text-amber-300 transition-all"
-              title="Hard Refresh Master Dataset & Cache"
+              id="btn-reset-draft"
+              onClick={onResetDraft}
+              className="flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-neutral-400 hover:bg-neutral-800 hover:text-rose-400 transition-all shadow-sm"
+              title="Reset live draft board"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span className="hidden lg:inline text-[11px]">Hard Refresh</span>
+              <span className="hidden md:inline">Reset</span>
             </button>
 
-            {/* Draft War Room Open */}
+            {/* Export CSV */}
             <button
-              id="btn-open-draft-war-room"
-              onClick={onOpenDraftRoom}
-              className="flex items-center gap-2 rounded-lg bg-rose-500/15 px-3 py-1.5 text-xs font-semibold text-rose-300 ring-1 ring-rose-500/30 hover:bg-rose-500/25 transition-all shadow-sm"
+              id="btn-export-csv"
+              onClick={onExportCSV}
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-600/20 border border-emerald-500/30 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-600/30 hover:text-white transition-all shadow-sm"
+              title="Export completed picks to CSV file"
             >
-              <div className="h-2 w-2 rounded-full bg-rose-500 ring-2 ring-rose-500/40 animate-pulse" />
-              <span>WAR ROOM</span>
+              <Download className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Export CSV</span>
             </button>
-
-            {/* My Roster Quick Pill */}
-            <button
-              id="btn-toggle-roster"
-              onClick={onOpenDraftRoom}
-              className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-neutral-200 ring-1 ring-neutral-700/60 hover:bg-neutral-800 transition-all"
-            >
-              <Users className="h-3.5 w-3.5 text-indigo-400" />
-              <span>Roster:</span>
-              <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-indigo-500/25 px-1 text-[10px] font-bold text-indigo-300 ring-1 ring-indigo-500/30">
-                {myTeamCount}/15
-              </span>
-            </button>
-
-            {/* Google Sheets Connection Pill */}
-            <div className="flex items-center rounded-lg bg-neutral-900 p-0.5 ring-1 ring-neutral-700/60">
-              <button
-                id="btn-open-sheet-modal"
-                onClick={onOpenSyncModal}
-                className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all"
-                title="Configure Google Sheet Link"
-              >
-                <Sheet className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">Google Sheet</span>
-              </button>
-
-              {user && onSyncLiveSheet && (
-                <button
-                  id="btn-sync-live-sheet"
-                  onClick={onSyncLiveSheet}
-                  disabled={isSyncing}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-emerald-400 hover:bg-emerald-500/10 transition-all disabled:opacity-50"
-                  title="Sync live spreadsheet updates"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span className="hidden md:inline">Sync</span>
-                </button>
-              )}
-
-              {user ? (
-                <button
-                  id="btn-google-logout"
-                  onClick={onLogout}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-all"
-                  title={`Signed in as ${user.email}`}
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                </button>
-              ) : (
-                <button
-                  id="btn-google-signin"
-                  onClick={onLogin}
-                  disabled={isLoggingIn}
-                  className="flex items-center gap-1.5 rounded-md bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-400 hover:bg-emerald-500/25 transition-all"
-                >
-                  <LogIn className="h-3.5 w-3.5" />
-                  <span>{isLoggingIn ? 'Connecting...' : 'Connect Sheet'}</span>
-                </button>
-              )}
-            </div>
           </div>
         </div>
 
-        {/* Preset Quick Filters Row */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-0.5 pt-0.5 no-scrollbar">
-          <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-neutral-400 whitespace-nowrap">
-            <Target className="h-3 w-3 text-indigo-400" />
-            <span>Draft Presets:</span>
+        {/* Row 2: Live On-The-Clock Status Banner + View Switcher */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-t border-neutral-800/80 pt-2">
+          {/* On-The-Clock Banner */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            {!isDraftComplete ? (
+              <div className="flex items-center gap-2 rounded-xl bg-amber-950/40 border border-amber-500/40 px-3 py-1 text-xs">
+                <span className="flex h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping" />
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold uppercase tracking-wider text-amber-300">
+                    ON CLOCK:
+                  </span>
+                  <strong className="text-white font-serif text-sm truncate">
+                    {activeTeam.name}
+                  </strong>
+                  <span className="rounded bg-amber-500/20 px-1.5 py-0.2 font-mono text-[10px] font-bold text-amber-400">
+                    Slot #{activeTeam.slot}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-xl bg-emerald-950/40 border border-emerald-500/40 px-3 py-1 text-xs text-emerald-300">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <span className="font-bold">180/180 Picks Complete! Draft Finished.</span>
+              </div>
+            )}
+
+            {/* Round & Pick Telemetry */}
+            <div className="flex items-center gap-2 text-xs text-neutral-400">
+              <span className="font-mono font-bold text-neutral-200">
+                Round {currentRound} • Pick {pickInRound}
+              </span>
+              <span className="text-neutral-600">|</span>
+              <span className="font-mono text-neutral-400">
+                Overall #{overallPickNumber} / 180 ({progressPercent}%)
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {DRAFT_PRESETS.map((preset) => {
-              const isActive = activeFilterPreset === preset.id;
-              return (
-                <button
-                  key={preset.id}
-                  id={`preset-${preset.id}`}
-                  onClick={() => onSelectFilterPreset(preset.id)}
-                  title={preset.description}
-                  className={`group relative whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
-                    isActive
-                      ? 'bg-neutral-100 text-neutral-950 font-bold shadow-md shadow-neutral-950/20 ring-1 ring-white'
-                      : 'bg-neutral-900/90 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 ring-1 ring-neutral-700/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>{preset.label}</span>
-                    {preset.badge && (
-                      <span className={`rounded px-1 py-0.2 text-[9px] font-extrabold uppercase ${
-                        isActive ? 'bg-indigo-600 text-white' : 'bg-indigo-500/20 text-indigo-300'
-                      }`}>
-                        {preset.badge}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+          {/* View Switcher Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+            <button
+              id="tab-view-grid"
+              onClick={() => onSelectView('grid')}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                currentView === 'grid'
+                  ? 'bg-neutral-100 text-neutral-950 font-bold shadow-md shadow-neutral-950/30'
+                  : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white'
+              }`}
+            >
+              <Grid className="h-3.5 w-3.5" />
+              <span>📊 Master Grid</span>
+            </button>
+
+            <button
+              id="tab-view-warroom"
+              onClick={() => onSelectView('warroom')}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                currentView === 'warroom'
+                  ? 'bg-neutral-100 text-neutral-950 font-bold shadow-md shadow-neutral-950/30'
+                  : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white'
+              }`}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>🏟️ War Room</span>
+            </button>
+
+            <button
+              id="tab-view-foresight"
+              onClick={() => onSelectView('foresight')}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                currentView === 'foresight'
+                  ? 'bg-neutral-100 text-neutral-950 font-bold shadow-md shadow-neutral-950/30'
+                  : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white'
+              }`}
+            >
+              <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+              <span>🔮 AI Foresight</span>
+            </button>
+
+            <button
+              id="tab-view-comparison"
+              onClick={() => onSelectView('comparison')}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                currentView === 'comparison'
+                  ? 'bg-neutral-100 text-neutral-950 font-bold shadow-md shadow-neutral-950/30'
+                  : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white'
+              }`}
+            >
+              <Scale className="h-3.5 w-3.5 text-amber-400" />
+              <span>⚖️ Compare</span>
+              {comparedCount > 0 && (
+                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-extrabold text-neutral-950">
+                  {comparedCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </div>
     </header>
   );
 };
-

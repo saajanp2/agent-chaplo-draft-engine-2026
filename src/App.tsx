@@ -196,19 +196,23 @@ export function App() {
     return predictions;
   }, [currentPickIndex, teams, availablePlayers]);
 
-  // Handler: Draft Player
-  const handleDraftPlayer = (player: Player) => {
+  // Handler: Draft Player (Supports targeting active on-clock team or specific team)
+  const handleDraftPlayer = (player: Player, targetTeamId?: number) => {
     if (picks.length >= 180) {
       alert("Draft is complete! All 180 picks have been recorded.");
       return;
     }
 
+    const assignedTeam = targetTeamId 
+      ? teams.find((t) => t.id === targetTeamId) || activeTeam 
+      : activeTeam;
+
     const newPick: DraftPick = {
       overallPick: currentPickInfo.overallPick,
       round: currentPickInfo.round,
       pickInRound: currentPickInfo.pickInRound,
-      teamId: activeTeam.id,
-      teamName: activeTeam.name,
+      teamId: assignedTeam.id,
+      teamName: assignedTeam.name,
       playerId: player.Player_ID,
       player: player,
       timestamp: new Date().toISOString(),
@@ -217,16 +221,50 @@ export function App() {
     setPicks((prev) => [...prev, newPick]);
 
     // Confetti on key milestones
-    if (activeTeam.isUser || newPick.overallPick === 1 || newPick.overallPick % 12 === 0) {
+    if (assignedTeam.isUser || newPick.overallPick === 1 || newPick.overallPick % 12 === 0) {
       confetti({
-        particleCount: activeTeam.isUser ? 80 : 40,
+        particleCount: assignedTeam.isUser ? 80 : 40,
         spread: 70,
         origin: { y: 0.6 }
       });
     }
 
-    setFeedbackBanner(`Pick #${newPick.overallPick}: ${activeTeam.name} drafted ${player.Player_Name} (${player.Pos}, ${player.Team})`);
+    setFeedbackBanner(`Pick #${newPick.overallPick}: ${assignedTeam.name} drafted ${player.Player_Name} (${player.Pos}, ${player.Team})`);
     setTimeout(() => setFeedbackBanner(null), 4000);
+  };
+
+  // Handler: Move / Transfer Player between Teams (Drag-and-Drop or Quick Transfer)
+  const handleMovePlayer = (playerId: number, targetTeamId: number) => {
+    const targetTeam = teams.find((t) => t.id === targetTeamId);
+    if (!targetTeam) return;
+
+    let movedPlayerName = '';
+    setPicks((prev) => {
+      return prev.map((pick) => {
+        if (pick.playerId === playerId) {
+          movedPlayerName = pick.player.Player_Name;
+          return {
+            ...pick,
+            teamId: targetTeam.id,
+            teamName: targetTeam.name,
+          };
+        }
+        return pick;
+      });
+    });
+
+    setFeedbackBanner(`Transferred ${movedPlayerName} to ${targetTeam.name}`);
+    setTimeout(() => setFeedbackBanner(null), 3500);
+  };
+
+  // Handler: Remove / Drop Drafted Player (1-Click Mistake Recovery)
+  const handleRemovePlayer = (playerId: number) => {
+    const removedPick = picks.find((p) => p.playerId === playerId);
+    if (!removedPick) return;
+
+    setPicks((prev) => prev.filter((p) => p.playerId !== playerId));
+    setFeedbackBanner(`Removed ${removedPick.player.Player_Name} from ${removedPick.teamName} (returned to pool)`);
+    setTimeout(() => setFeedbackBanner(null), 3500);
   };
 
   // Handler: Undo Last Pick
@@ -362,6 +400,11 @@ export function App() {
             picks={picks}
             activeTeamId={activeTeam.id}
             currentPickNumber={currentPickInfo.overallPick}
+            availablePlayers={availablePlayers}
+            allPlayers={raw208Players}
+            onDraftPlayer={handleDraftPlayer}
+            onMovePlayer={handleMovePlayer}
+            onRemovePlayer={handleRemovePlayer}
             onSelectPlayer={setSelectedPlayer}
           />
         )}

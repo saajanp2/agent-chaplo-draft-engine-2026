@@ -30,6 +30,7 @@ interface DraftWarRoomProps {
   onMovePlayer: (playerId: number, targetTeamId: number) => void;
   onRemovePlayer: (playerId: number) => void;
   onSelectPlayer: (player: Player) => void;
+  onSetUserTeam?: (teamId: number) => void;
 }
 
 export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
@@ -43,6 +44,7 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
   onMovePlayer,
   onRemovePlayer,
   onSelectPlayer,
+  onSetUserTeam,
 }) => {
   // Global Quick-Type Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -477,10 +479,12 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
               className={`relative flex flex-col rounded-2xl border p-4 transition-all shadow-xl backdrop-blur-xl ${
                 isDragOver
                   ? 'border-emerald-400 bg-emerald-950/40 ring-4 ring-emerald-500/50 scale-[1.02] shadow-emerald-500/20'
+                  : isOnClock && team.isUser
+                  ? 'border-amber-400 bg-gradient-to-b from-amber-950/60 via-neutral-900/95 to-neutral-950 ring-4 ring-amber-500/60 shadow-2xl shadow-amber-500/20'
                   : isOnClock
                   ? 'border-amber-500 bg-gradient-to-b from-amber-950/40 via-neutral-900/90 to-neutral-950 ring-2 ring-amber-500/50 shadow-amber-500/10'
                   : team.isUser
-                  ? 'border-indigo-500/50 bg-indigo-950/20'
+                  ? 'border-indigo-500/80 bg-gradient-to-b from-indigo-950/40 via-neutral-900/90 to-neutral-950 ring-2 ring-indigo-500/50 shadow-indigo-500/10'
                   : 'border-neutral-800 bg-neutral-900/70 hover:border-neutral-700'
               }`}
             >
@@ -496,13 +500,17 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
               {/* Card Header */}
               <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2.5">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-neutral-800 font-mono text-[11px] font-bold text-neutral-300 shrink-0">
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-md font-mono text-[11px] font-bold shrink-0 ${
+                    team.isUser ? 'bg-amber-500 text-neutral-950 font-black' : 'bg-neutral-800 text-neutral-300'
+                  }`}>
                     #{team.slot}
                   </span>
                   <div className="min-w-0">
-                    <h4 className="font-serif text-sm font-bold text-neutral-100 truncate">
-                      {team.name}
-                    </h4>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="font-serif text-sm font-bold text-neutral-100 truncate">
+                        {team.name}
+                      </h4>
+                    </div>
                     <span className="text-[10px] text-neutral-400 block truncate">
                       {team.archetype}
                     </span>
@@ -510,16 +518,31 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {isOnClock ? (
+                  {isOnClock && team.isUser ? (
+                    <span className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 px-2.5 py-1 text-[10px] font-black text-neutral-950 shadow-md shadow-amber-500/30 animate-pulse">
+                      <Clock className="h-3.5 w-3.5 stroke-[3]" />
+                      <span>🚨 YOUR TURN!</span>
+                    </span>
+                  ) : isOnClock ? (
                     <span className="flex items-center gap-1 rounded bg-amber-500 px-2 py-0.5 text-[10px] font-extrabold text-neutral-950 animate-pulse">
                       <Clock className="h-3 w-3" />
                       <span>ON CLOCK</span>
                     </span>
                   ) : team.isUser ? (
-                    <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-bold text-indigo-300 ring-1 ring-indigo-500/30">
-                      ★ MY TEAM
+                    <span className="rounded-lg bg-indigo-500/20 border border-indigo-500/40 px-2 py-0.5 text-[10px] font-black text-indigo-300 ring-1 ring-indigo-500/30 shadow-sm">
+                      ★ MY TEAM (Pick #{team.slot})
                     </span>
-                  ) : null}
+                  ) : (
+                    onSetUserTeam && (
+                      <button
+                        onClick={() => onSetUserTeam(team.id)}
+                        className="rounded px-1.5 py-0.5 text-[10px] text-neutral-500 hover:text-amber-300 hover:bg-neutral-800 transition-all opacity-60 hover:opacity-100"
+                        title={`Set Slot #${team.slot} as My Team`}
+                      >
+                        Set Mine
+                      </button>
+                    )
+                  )}
 
                   {/* Quick Add Button */}
                   <button

@@ -17,6 +17,7 @@ import { TeamConfig, ViewMode } from '../types';
 interface NavbarProps {
   currentPickIndex: number; // 0 to 179
   activeTeam: TeamConfig;
+  userTeam: TeamConfig;
   currentRound: number; // 1 to 15
   pickInRound: number; // 1 to 12
   currentView: ViewMode;
@@ -32,6 +33,7 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   currentPickIndex,
   activeTeam,
+  userTeam,
   currentRound,
   pickInRound,
   currentView,
@@ -124,7 +126,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Row 2: Live On-The-Clock Status Banner + View Switcher */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-t border-neutral-800/80 pt-2">
           {/* On-The-Clock Banner */}
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex flex-wrap items-center gap-2.5 min-w-0">
             {!isDraftComplete ? (
               <div className="flex items-center gap-2 rounded-xl bg-amber-950/40 border border-amber-500/40 px-3 py-1 text-xs">
                 <span className="flex h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping" />
@@ -146,6 +148,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="font-bold">180/180 Picks Complete! Draft Finished.</span>
               </div>
             )}
+
+            {/* My Team Slot Indicator */}
+            <div className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-bold ring-1 ${
+              activeTeam.id === userTeam.id
+                ? 'bg-amber-500 text-neutral-950 ring-amber-400 animate-pulse shadow-md shadow-amber-500/30'
+                : 'bg-indigo-950/40 border border-indigo-500/30 text-indigo-300 ring-indigo-500/20'
+            }`}>
+              <span>★ My Slot: #{userTeam.slot}</span>
+              {activeTeam.id === userTeam.id && (
+                <span className="bg-neutral-950 text-amber-400 px-1.5 py-0.2 rounded text-[10px] font-black">
+                  YOUR PICK!
+                </span>
+              )}
+            </div>
 
             {/* Round & Pick Telemetry */}
             <div className="flex items-center gap-2 text-xs text-neutral-400">

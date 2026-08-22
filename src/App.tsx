@@ -19,28 +19,27 @@ import confetti from 'canvas-confetti';
 export function App() {
   // 1. Teams Configuration State (Defaulting to Slot #7 for Agent Chaplo)
   const [teams, setTeams] = useState<TeamConfig[]>(() => {
-    const saved = localStorage.getItem('agent_chaplo_teams_2026_v2') || localStorage.getItem('agent_chaplo_teams_2026');
+    const saved = localStorage.getItem('agent_chaplo_teams_2026_v3');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length === 12) {
-          // If Team 7 isn't user (e.g. from old draft order), update to Slot 7 as user
-          const hasUserAt7 = parsed.some((t) => t.slot === 7 && t.isUser);
-          if (!hasUserAt7) {
-            return defaultTeams;
-          }
-          return parsed;
+          const hasUser = parsed.some((t) => t.isUser);
+          if (hasUser) return parsed;
         }
       } catch (e) {
         return defaultTeams;
       }
     }
+    // Clean legacy storage key if present
+    localStorage.removeItem('agent_chaplo_teams_2026');
+    localStorage.removeItem('agent_chaplo_teams_2026_v2');
     return defaultTeams;
   });
 
   // 2. Drafted Picks History (180 picks total)
   const [picks, setPicks] = useState<DraftPick[]>(() => {
-    const saved = localStorage.getItem('agent_chaplo_picks_2026');
+    const saved = localStorage.getItem('agent_chaplo_picks_2026_v3') || localStorage.getItem('agent_chaplo_picks_2026');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -65,11 +64,11 @@ export function App() {
 
   // Sync state to LocalStorage
   useEffect(() => {
-    localStorage.setItem('agent_chaplo_teams_2026', JSON.stringify(teams));
+    localStorage.setItem('agent_chaplo_teams_2026_v3', JSON.stringify(teams));
   }, [teams]);
 
   useEffect(() => {
-    localStorage.setItem('agent_chaplo_picks_2026', JSON.stringify(picks));
+    localStorage.setItem('agent_chaplo_picks_2026_v3', JSON.stringify(picks));
   }, [picks]);
 
   // Helper: Compute snake draft pick information
@@ -293,6 +292,22 @@ export function App() {
     }
   };
 
+  // Handler: 1-Click Set User Team Slot
+  const handleSetUserTeam = (teamId: number) => {
+    setTeams((prev) => {
+      return prev.map((t) => ({
+        ...t,
+        isUser: t.id === teamId,
+        name: t.id === teamId 
+          ? (t.name.includes("Agent Chaplo") ? t.name : `Team ${t.slot} (Agent Chaplo)`) 
+          : t.name.replace(" (Agent Chaplo)", ` (Brown Baller ${t.slot})`)
+      }));
+    });
+    const selected = teams.find((t) => t.id === teamId);
+    setFeedbackBanner(`🎯 Set Draft Slot to #${selected?.slot} (${selected?.name})`);
+    setTimeout(() => setFeedbackBanner(null), 3500);
+  };
+
   // Handler: Toggle Comparison
   const handleToggleCompare = (player: Player) => {
     setComparisonIds((prev) => {
@@ -332,7 +347,7 @@ export function App() {
         p.player.POADP_Points_Over_ADP,
         p.player.W1_4_Proj_PPG,
         p.player.Proj_Fantasy_Pts_2026,
-        `"${p.player.Primary_Weekly_Opportunity.replace(/"/g, '""')}"`,
+        `"${p.player.Primary_Weekly_Opportunity?.replace(/"/g, '""') || ''}"`,
       ];
       csv += row.join(",") + "\n";
     });
@@ -360,6 +375,7 @@ export function App() {
       <Navbar
         currentPickIndex={currentPickIndex}
         activeTeam={activeTeam}
+        userTeam={userTeam}
         currentRound={currentRound}
         pickInRound={pickInRound}
         currentView={currentView}
@@ -413,6 +429,7 @@ export function App() {
             onMovePlayer={handleMovePlayer}
             onRemovePlayer={handleRemovePlayer}
             onSelectPlayer={setSelectedPlayer}
+            onSetUserTeam={handleSetUserTeam}
           />
         )}
 

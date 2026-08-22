@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Trophy, 
   Users, 
@@ -6,16 +6,19 @@ import {
   TrendingUp, 
   Trash2, 
   Shield, 
-  Clock,
-  UserCheck,
-  Search,
-  Plus,
-  GripVertical,
-  ArrowRightLeft,
-  X,
-  Check,
-  AlertCircle,
-  MoveHorizontal
+  Clock, 
+  UserCheck, 
+  Search, 
+  Plus, 
+  GripVertical, 
+  ArrowRightLeft, 
+  X, 
+  Check, 
+  AlertCircle, 
+  Layers, 
+  Flame, 
+  Zap, 
+  SlidersHorizontal 
 } from 'lucide-react';
 import { Player, TeamConfig, DraftPick, RosterSlots, Position } from '../types';
 
@@ -46,22 +49,24 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
   onSelectPlayer,
   onSetUserTeam,
 }) => {
-  // Global Quick-Type Search State
+  // Global Quick-Type Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTargetTeamId, setSelectedTargetTeamId] = useState<number>(activeTeamId);
+  const [activePosFilter, setActivePosFilter] = useState<string>('ALL');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Per-team inline add search state
   const [inlineTeamSearchId, setInlineTeamSearchId] = useState<number | null>(null);
   const [inlineSearchQuery, setInlineSearchQuery] = useState('');
+  const [inlinePosFilter, setInlinePosFilter] = useState<string>('ALL');
 
   // Drag & Drop State
   const [draggedPlayerId, setDraggedPlayerId] = useState<number | null>(null);
   const [draggedFromTeamId, setDraggedFromTeamId] = useState<number | null>(null);
   const [dragOverTeamId, setDragOverTeamId] = useState<number | null>(null);
 
-  // Quick Move Dropdown Modal / Popover State
+  // Quick Move Dropdown Modal State
   const [quickMovePlayer, setQuickMovePlayer] = useState<{ player: Player; fromTeamId: number } | null>(null);
 
   // Update selected target team when active on-clock team changes
@@ -82,32 +87,80 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Filtered available players for search
-  const filteredAvailablePlayers = React.useMemo(() => {
-    if (!searchQuery.trim()) return availablePlayers.slice(0, 8);
-    const q = searchQuery.toLowerCase();
-    return availablePlayers.filter((p) => {
-      return (
-        p.Player_Name.toLowerCase().includes(q) ||
-        p.Team.toLowerCase().includes(q) ||
-        p.Pos.toLowerCase().includes(q) ||
-        p.Sleeper_Tag.toLowerCase().includes(q)
-      );
-    }).slice(0, 10);
-  }, [availablePlayers, searchQuery]);
+  // Compute Positional Tier Statistics & Scarcity Counts
+  const posScarcity = useMemo(() => {
+    const stats: Record<Position, { t1Count: number; t2Count: number; total: number; best?: Player }> = {
+      QB: { t1Count: 0, t2Count: 0, total: 0 },
+      RB: { t1Count: 0, t2Count: 0, total: 0 },
+      WR: { t1Count: 0, t2Count: 0, total: 0 },
+      TE: { t1Count: 0, t2Count: 0, total: 0 },
+      K: { t1Count: 0, t2Count: 0, total: 0 },
+      DEF: { t1Count: 0, t2Count: 0, total: 0 },
+    };
+
+    availablePlayers.forEach((p) => {
+      if (!stats[p.Pos]) return;
+      stats[p.Pos].total += 1;
+      if (p.Position_Tier === 1) stats[p.Pos].t1Count += 1;
+      if (p.Position_Tier === 2) stats[p.Pos].t2Count += 1;
+      if (!stats[p.Pos].best) {
+        stats[p.Pos].best = p;
+      }
+    });
+
+    return stats;
+  }, [availablePlayers]);
+
+  // Filtered available players for top search bar
+  const filteredAvailablePlayers = useMemo(() => {
+    return availablePlayers
+      .filter((p) => {
+        // Position filter
+        if (activePosFilter === 'FLEX') {
+          if (!['RB', 'WR', 'TE'].includes(p.Pos)) return false;
+        } else if (activePosFilter !== 'ALL' && p.Pos !== activePosFilter) {
+          return false;
+        }
+
+        // Search query
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          return (
+            p.Player_Name.toLowerCase().includes(q) ||
+            p.Team.toLowerCase().includes(q) ||
+            p.Pos.toLowerCase().includes(q) ||
+            p.Sleeper_Tag?.toLowerCase().includes(q)
+          );
+        }
+
+        return true;
+      })
+      .slice(0, 14);
+  }, [availablePlayers, activePosFilter, searchQuery]);
 
   // Filtered for inline team search
-  const filteredInlinePlayers = React.useMemo(() => {
-    if (!inlineSearchQuery.trim()) return availablePlayers.slice(0, 6);
-    const q = inlineSearchQuery.toLowerCase();
-    return availablePlayers.filter((p) => {
-      return (
-        p.Player_Name.toLowerCase().includes(q) ||
-        p.Team.toLowerCase().includes(q) ||
-        p.Pos.toLowerCase().includes(q)
-      );
-    }).slice(0, 8);
-  }, [availablePlayers, inlineSearchQuery]);
+  const filteredInlinePlayers = useMemo(() => {
+    return availablePlayers
+      .filter((p) => {
+        if (inlinePosFilter === 'FLEX') {
+          if (!['RB', 'WR', 'TE'].includes(p.Pos)) return false;
+        } else if (inlinePosFilter !== 'ALL' && p.Pos !== inlinePosFilter) {
+          return false;
+        }
+
+        if (inlineSearchQuery.trim()) {
+          const q = inlineSearchQuery.toLowerCase();
+          return (
+            p.Player_Name.toLowerCase().includes(q) ||
+            p.Team.toLowerCase().includes(q) ||
+            p.Pos.toLowerCase().includes(q)
+          );
+        }
+
+        return true;
+      })
+      .slice(0, 8);
+  }, [availablePlayers, inlinePosFilter, inlineSearchQuery]);
 
   // Helper to construct roster for a team
   const getTeamRoster = (teamId: number): RosterSlots => {
@@ -184,7 +237,6 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
   };
 
   const handleDragLeave = (e: React.DragEvent, targetTeamId: number) => {
-    // Only clear if leaving the card boundary
     if (dragOverTeamId === targetTeamId) {
       setDragOverTeamId(null);
     }
@@ -202,7 +254,6 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
         }
       }
     } catch (err) {
-      // Fallback to state
       if (draggedPlayerId && draggedFromTeamId !== targetTeamId) {
         onMovePlayer(draggedPlayerId, targetTeamId);
       }
@@ -222,6 +273,17 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
       default: return 'bg-neutral-800 text-neutral-300 ring-neutral-700';
     }
   };
+
+  const posTabs = [
+    { id: 'ALL', label: 'ALL', count: availablePlayers.length },
+    { id: 'RB', label: 'RB', t1: posScarcity.RB.t1Count, t2: posScarcity.RB.t2Count, count: posScarcity.RB.total },
+    { id: 'WR', label: 'WR', t1: posScarcity.WR.t1Count, t2: posScarcity.WR.t2Count, count: posScarcity.WR.total },
+    { id: 'TE', label: 'TE', t1: posScarcity.TE.t1Count, t2: posScarcity.TE.t2Count, count: posScarcity.TE.total },
+    { id: 'QB', label: 'QB', t1: posScarcity.QB.t1Count, t2: posScarcity.QB.t2Count, count: posScarcity.QB.total },
+    { id: 'FLEX', label: 'FLEX', count: posScarcity.RB.total + posScarcity.WR.total + posScarcity.TE.total },
+    { id: 'K', label: 'K', count: posScarcity.K.total },
+    { id: 'DEF', label: 'DEF', count: posScarcity.DEF.total },
+  ];
 
   const renderSlot = (slotLabel: string, player: Player | undefined, badgeColor: string, teamId: number) => {
     const isThisDragged = player && draggedPlayerId === player.Player_ID;
@@ -294,8 +356,79 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
 
   return (
     <div className="space-y-5 animate-fadeIn">
-      {/* Top Section: Quick-Type Manual Search Bar & Fast Draft Dispatcher */}
-      <div className="relative z-30 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-neutral-900 via-neutral-900 to-amber-950/40 p-4 shadow-2xl backdrop-blur-xl">
+      {/* 1. Positional Scarcity & Top-Tier Cliff Tracker Strip */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        {(['RB', 'WR', 'TE', 'QB', 'K', 'DEF'] as Position[]).map((pos) => {
+          const info = posScarcity[pos];
+          const isLowTier1 = info.t1Count <= 2 && info.t1Count > 0;
+          const isDepletedTier1 = info.t1Count === 0;
+
+          return (
+            <div
+              key={pos}
+              onClick={() => {
+                setActivePosFilter(pos);
+                setIsSearchOpen(true);
+                searchInputRef.current?.focus();
+              }}
+              className={`rounded-xl border p-3 transition-all cursor-pointer shadow-lg backdrop-blur-xl ${
+                activePosFilter === pos
+                  ? 'border-amber-500 bg-amber-950/40 ring-1 ring-amber-500/50'
+                  : 'border-neutral-800 bg-neutral-900/80 hover:border-neutral-700 hover:bg-neutral-900'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className={`inline-flex items-center rounded px-2 py-0.5 font-mono text-[10px] font-bold ring-1 ${posBadgeColor(pos)}`}>
+                  {pos}
+                </span>
+                <span className="text-[10px] text-neutral-500 font-mono">
+                  {info.total} avail
+                </span>
+              </div>
+
+              {/* Tier Counts */}
+              <div className="mt-2 flex items-center gap-2 text-xs">
+                {pos !== 'K' && pos !== 'DEF' ? (
+                  <>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-neutral-400">T1:</span>
+                      <strong className={`font-mono text-xs ${
+                        isDepletedTier1 ? 'text-neutral-500' : isLowTier1 ? 'text-amber-400 animate-pulse' : 'text-emerald-400'
+                      }`}>
+                        {info.t1Count} left
+                      </strong>
+                    </div>
+                    <span className="text-neutral-700">|</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-neutral-400">T2:</span>
+                      <strong className="font-mono text-neutral-200 text-xs">
+                        {info.t2Count}
+                      </strong>
+                    </div>
+                  </>
+                ) : (
+                  <span className="text-[11px] text-neutral-400">
+                    Stream / Late Target
+                  </span>
+                )}
+              </div>
+
+              {/* Best Available Player at Pos */}
+              {info.best && (
+                <div className="mt-1.5 pt-1.5 border-t border-neutral-800/80 truncate text-[11px]">
+                  <span className="text-[9px] uppercase font-bold text-neutral-500 block">Top Available:</span>
+                  <span className="font-serif font-bold text-neutral-200 truncate block">
+                    {info.best.Player_Name} ({info.best.W1_4_Proj_PPG} PPG)
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 2. Top Quick-Type Search Bar & Fast Position Filter Tabs */}
+      <div className="relative z-30 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-neutral-900 via-neutral-900 to-amber-950/40 p-4 shadow-2xl backdrop-blur-xl space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40">
@@ -307,11 +440,11 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
                   12-Team Live War Room Board
                 </h2>
                 <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400 ring-1 ring-amber-500/30">
-                  ⚡ HIGH-SPEED QUICK DRAFT & DRAG-AND-DROP
+                  ⚡ INSTANT POSITION TOGGLE & DRAFT
                 </span>
               </div>
               <p className="text-xs text-neutral-400">
-                Type any player to assign instantly, or drag & drop player cards between teams to correct mistakes
+                Filter top-tier available players across positions, or drag & drop cards to transfer
               </p>
             </div>
           </div>
@@ -343,7 +476,7 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Type player name to draft (e.g. Ashton Jeanty, Bowers)... [Press /]"
+                  placeholder={`Search ${activePosFilter === 'ALL' ? 'all positions' : activePosFilter} (e.g. Ashton Jeanty, Bowers)... [Press /]`}
                   value={searchQuery}
                   onFocus={() => setIsSearchOpen(true)}
                   onChange={(e) => {
@@ -374,22 +507,22 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
                 )}
               </div>
 
-              {/* Autocomplete Dropdown */}
+              {/* Autocomplete Dropdown with Position Tier Separation */}
               {isSearchOpen && (
                 <div 
-                  className="absolute left-0 right-0 top-full mt-1.5 z-50 max-h-72 overflow-y-auto rounded-xl border border-neutral-700 bg-neutral-900/98 p-1.5 shadow-2xl backdrop-blur-2xl divide-y divide-neutral-800"
-                  onMouseDown={(e) => e.preventDefault()} // Prevent blur before click
+                  className="absolute left-0 right-0 top-full mt-1.5 z-50 max-h-80 overflow-y-auto rounded-xl border border-neutral-700 bg-neutral-900/98 p-1.5 shadow-2xl backdrop-blur-2xl divide-y divide-neutral-800"
+                  onMouseDown={(e) => e.preventDefault()}
                 >
                   <div className="flex items-center justify-between px-2.5 py-1 text-[10px] text-neutral-400 bg-neutral-950/60 rounded-lg mb-1">
                     <span>
-                      Drafting to: <strong className="text-amber-400">{teams.find((t) => t.id === selectedTargetTeamId)?.name}</strong>
+                      Filter: <strong className="text-amber-400">{activePosFilter}</strong> • Drafting to: <strong className="text-white">{teams.find((t) => t.id === selectedTargetTeamId)?.name}</strong>
                     </span>
                     <span className="text-neutral-500">Press Enter for #1 match</span>
                   </div>
 
                   {filteredAvailablePlayers.length === 0 ? (
                     <div className="px-3 py-4 text-center text-xs text-neutral-500">
-                      No available players match "{searchQuery}"
+                      No available players match current position filter & search "{searchQuery}"
                     </div>
                   ) : (
                     filteredAvailablePlayers.map((player, idx) => (
@@ -412,9 +545,14 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
                             {player.Pos}
                           </span>
                           <div className="min-w-0">
-                            <strong className="text-white font-serif block truncate">
-                              {player.Player_Name}
-                            </strong>
+                            <div className="flex items-center gap-1.5">
+                              <strong className="text-white font-serif block truncate">
+                                {player.Player_Name}
+                              </strong>
+                              <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">
+                                Tier {player.Position_Tier}
+                              </span>
+                            </div>
                             <span className="text-[10px] text-neutral-400 truncate block">
                               {player.Team} • {player.Sleeper_Tag}
                             </span>
@@ -445,9 +583,43 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Position Filter Pills with Tier Counters */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar border-t border-neutral-800/80 pt-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 shrink-0 mr-1">
+            Quick Position Toggle:
+          </span>
+          {posTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActivePosFilter(tab.id);
+                setIsSearchOpen(true);
+              }}
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all shrink-0 ${
+                activePosFilter === tab.id
+                  ? 'bg-amber-500 text-neutral-950 font-bold shadow-md shadow-amber-500/20'
+                  : 'bg-neutral-950 border border-neutral-800 text-neutral-400 hover:bg-neutral-800 hover:text-white'
+              }`}
+            >
+              <span>{tab.label}</span>
+              {tab.t1 !== undefined && tab.t1 > 0 ? (
+                <span className={`rounded px-1 py-0.2 text-[9px] font-bold ${
+                  activePosFilter === tab.id ? 'bg-neutral-950 text-amber-400' : 'bg-emerald-500/20 text-emerald-300'
+                }`}>
+                  T1: {tab.t1}
+                </span>
+              ) : (
+                <span className={`text-[10px] ${activePosFilter === tab.id ? 'text-neutral-900 font-extrabold' : 'text-neutral-500'}`}>
+                  ({tab.count})
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* 12-Team Responsive Grid Board */}
+      {/* 3. 12-Team Responsive Grid Board */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {teams.map((team) => {
           const isOnClock = team.id === activeTeamId && picks.length < 180;
@@ -549,6 +721,7 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
                     onClick={() => {
                       setInlineTeamSearchId(isInlineSearchOpen ? null : team.id);
                       setInlineSearchQuery('');
+                      setInlinePosFilter('ALL');
                     }}
                     className={`rounded p-1 text-xs transition-all ${
                       isInlineSearchOpen
@@ -562,9 +735,9 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
                 </div>
               </div>
 
-              {/* Inline Search for this Team */}
+              {/* Inline Search with Pos Filter for this Team */}
               {isInlineSearchOpen && (
-                <div className="my-2 space-y-1.5 rounded-xl border border-amber-500/40 bg-neutral-950 p-2 text-xs animate-fadeIn">
+                <div className="my-2 space-y-2 rounded-xl border border-amber-500/40 bg-neutral-950 p-2.5 text-xs animate-fadeIn">
                   <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
                     <span className="text-[10px] font-bold text-amber-400 uppercase">
                       Quick Add to {team.name}
@@ -576,6 +749,24 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
                       <X className="h-3 w-3" />
                     </button>
                   </div>
+
+                  {/* Inline Position Filter Chips */}
+                  <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar">
+                    {['ALL', 'RB', 'WR', 'TE', 'QB', 'K', 'DEF'].map((pos) => (
+                      <button
+                        key={pos}
+                        onClick={() => setInlinePosFilter(pos)}
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition-all ${
+                          inlinePosFilter === pos
+                            ? 'bg-amber-500 text-neutral-950'
+                            : 'bg-neutral-900 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        {pos}
+                      </button>
+                    ))}
+                  </div>
+
                   <input
                     type="text"
                     autoFocus
@@ -596,7 +787,7 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
                       >
                         <div className="truncate mr-1">
                           <strong className="text-white">{p.Player_Name}</strong>
-                          <span className="text-neutral-500 ml-1">({p.Pos} • {p.Team})</span>
+                          <span className="text-neutral-500 ml-1">({p.Pos} • Tier {p.Position_Tier})</span>
                         </div>
                         <span className="font-mono text-emerald-400 text-[10px] shrink-0">
                           {p.W1_4_Proj_PPG} PPG

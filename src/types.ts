@@ -152,10 +152,10 @@ export interface H2HRule {
   id: string;
   title: string;
   winner: string;
-  loser: string;
+  loser?: string;
   verdict: string;
   reasoning: string;
-  category: 'Elite WR' | 'TE Cheat Code' | 'Dead Zone RB' | 'Konami QB' | 'Flex Target' | 'Kicker & DEF';
+  category: string;
 }
 
 export type ViewMode = 'grid' | 'warroom' | 'foresight' | 'comparison';

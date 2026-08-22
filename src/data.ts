@@ -3,11 +3,11 @@ import { Player, TeamConfig, H2HRule } from './types';
 export const defaultTeams: TeamConfig[] = [
   {
     "id": 1,
-    "name": "Team 1 (Agent Chaplo)",
+    "name": "Team 1 (Brown Baller 1)",
     "slot": 1,
-    "isUser": true,
-    "archetype": "BPA & VORP Maximizer",
-    "colorTheme": "amber"
+    "isUser": false,
+    "archetype": "Consensus ADP Follower",
+    "colorTheme": "blue"
   },
   {
     "id": 2,
@@ -51,11 +51,11 @@ export const defaultTeams: TeamConfig[] = [
   },
   {
     "id": 7,
-    "name": "Team 7 (Brown Baller 7)",
+    "name": "Team 7 (Agent Chaplo)",
     "slot": 7,
-    "isUser": false,
-    "archetype": "Upside Rookie Chaser",
-    "colorTheme": "rose"
+    "isUser": true,
+    "archetype": "BPA & VORP Maximizer",
+    "colorTheme": "amber"
   },
   {
     "id": 8,
@@ -153,6 +153,15 @@ export const h2hRules: H2HRule[] = [
     "verdict": "Draft Dome Kickers in high-efficiency offenses in Rd 14",
     "reasoning": "Kickers in dome stadiums attached to high-scoring offenses generate +2.5 more extra points and field goal opportunities with zero wind interference.",
     "category": "Kicker & DEF"
+  },
+  {
+    "id": "h2h-7",
+    "title": "Pick #7 Anchor Strategy: Hero RB vs Elite Tier 1 WR",
+    "winner": "Breece Hall / Saquon Barkley / Justin Jefferson",
+    "loser": "Early QB/TE in Round 1",
+    "verdict": "Lock in Tier 1 Hero Anchor at 1.07; Target Brock Bowers or Konami QB at 2.06 (Pick 18)",
+    "reasoning": "At Pick #7, securing a top-tier bellcow RB or 30%+ target share WR establishes a 20+ PPG anchor, perfectly positioning you for the 2.06 turn (Pick 18) to grab Brock Bowers or Lamar Jackson.",
+    "category": "Elite WR"
   }
 ];
 

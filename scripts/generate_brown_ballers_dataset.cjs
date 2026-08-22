@@ -283,13 +283,13 @@ playersList.forEach(p => {
 
 // Default 12 Brown Ballers Teams
 const defaultTeams = [
-  { id: 1, name: "Team 1 (Agent Chaplo)", slot: 1, isUser: true, archetype: "BPA & VORP Maximizer", colorTheme: "amber" },
+  { id: 1, name: "Team 1 (Brown Baller 1)", slot: 1, isUser: false, archetype: "Consensus ADP Follower", colorTheme: "blue" },
   { id: 2, name: "Team 2 (Brown Baller 2)", slot: 2, isUser: false, archetype: "Hero RB Anchor", colorTheme: "indigo" },
   { id: 3, name: "Team 3 (Brown Baller 3)", slot: 3, isUser: false, archetype: "Zero RB Wideout Heavy", colorTheme: "emerald" },
   { id: 4, name: "Team 4 (Brown Baller 4)", slot: 4, isUser: false, archetype: "Elite QB/TE Hunter", colorTheme: "purple" },
   { id: 5, name: "Team 5 (Brown Baller 5)", slot: 5, isUser: false, archetype: "Dual Workhorse RB", colorTheme: "blue" },
   { id: 6, name: "Team 6 (Brown Baller 6)", slot: 6, isUser: false, archetype: "Balanced Value Drafter", colorTheme: "teal" },
-  { id: 7, name: "Team 7 (Brown Baller 7)", slot: 7, isUser: false, archetype: "Upside Rookie Chaser", colorTheme: "rose" },
+  { id: 7, name: "Team 7 (Agent Chaplo)", slot: 7, isUser: true, archetype: "BPA & VORP Maximizer", colorTheme: "amber" },
   { id: 8, name: "Team 8 (Brown Baller 8)", slot: 8, isUser: false, archetype: "Heavy Red-Zone Believer", colorTheme: "amber" },
   { id: 9, name: "Team 9 (Brown Baller 9)", slot: 9, isUser: false, archetype: "PPR Volume Stacker", colorTheme: "cyan" },
   { id: 10, name: "Team 10 (Brown Baller 10)", slot: 10, isUser: false, archetype: "Market ADP Follower", colorTheme: "indigo" },
@@ -352,6 +352,15 @@ const h2hRules = [
     verdict: "Draft Dome Kickers in high-efficiency offenses in Rd 14",
     reasoning: "Kickers in dome stadiums attached to high-scoring offenses generate +2.5 more extra points and field goal opportunities with zero wind interference.",
     category: "Kicker & DEF"
+  },
+  {
+    id: "h2h-7",
+    title: "Pick #7 Anchor Strategy: Hero RB vs Elite Tier 1 WR",
+    winner: "Breece Hall / Saquon Barkley / Justin Jefferson",
+    loser: "Early QB/TE in Round 1",
+    verdict: "Lock in Tier 1 Hero Anchor at 1.07; Target Brock Bowers or Konami QB at 2.06 (Pick 18)",
+    reasoning: "At Pick #7, securing a top-tier bellcow RB or 30%+ target share WR establishes a 20+ PPG anchor, perfectly positioning you for the 2.06 turn (Pick 18) to grab Brock Bowers or Lamar Jackson.",
+    category: "Elite WR"
   }
 ];
 

@@ -52,14 +52,16 @@ export const AIForesightHub: React.FC<AIForesightHubProps> = ({
   // Find top alternative player from a different position or top surplus
   const contingencyPick = availablePlayers.find((p) => p.Pos !== priorityPick?.Pos) || topPOADP || availablePlayers[1];
 
-  // Contextual Round Trigger Message
-  let roundTrigger = "Round 1: Target foundational alpha anchor (Tier 1 RB bellcow or 30%+ target share WR1).";
+  // Contextual Round Trigger Message (Tailored for Pick #7 Turn Dynamics)
+  let roundTrigger = "Round 1 (Pick 7): Target foundational alpha anchor (Tier 1 RB bellcow like Breece/Saquon/Bijan or 30%+ target share WR1 like JJ/CeeDee).";
   if (currentRound === 2) {
-    roundTrigger = "Round 2: If CeeDee, JJ, or Brock Bowers fall, prioritize over mid-tier WR2s to establish massive positional advantage.";
+    roundTrigger = "Round 2 (Pick 18 = 2.06): Prime window for Brock Bowers (TE Cheat Code), Elite Konami QB (Lamar/Josh Allen), or Alpha WR (Malik Nabers/Rome Odunze).";
   } else if (currentRound === 3) {
-    roundTrigger = "Round 3: Peak window for Elite 6-pt Pass TD QBs (Josh Allen / Lamar / Jayden Daniels) or locking in high-volume RB2.";
-  } else if (currentRound >= 4 && currentRound <= 7) {
-    roundTrigger = "Rounds 4–7: 2-FLEX Core Starters Window. Fill starting slots with 120+ target WRs & goal-line RBs before the tier cliff.";
+    roundTrigger = "Round 3 (Pick 31 = 3.07): Lock in RB2 bellcow (Ashton Jeanty / James Cook / Kenneth Walker) or elite TE (Sam LaPorta / Trey McBride).";
+  } else if (currentRound === 4) {
+    roundTrigger = "Round 4 (Pick 42 = 4.06): 2-FLEX starter window. Target high-aDOT receivers (Ladd McConkey / Travis Hunter / Tee Higgins) or Patrick Mahomes.";
+  } else if (currentRound >= 5 && currentRound <= 7) {
+    roundTrigger = "Rounds 5–7: Fill your 2-FLEX lineup with 120+ target WRs and goal-line RBs before the tier cliff.";
   } else if (currentRound >= 8 && currentRound <= 11) {
     roundTrigger = "Rounds 8–11: Exploit market ADP gaps (+10 surplus). Target upside rookie acclimation ramps and high-EPA pass catchers.";
   } else if (currentRound >= 12 && currentRound <= 13) {

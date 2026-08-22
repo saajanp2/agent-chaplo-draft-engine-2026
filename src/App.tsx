@@ -17,13 +17,20 @@ import { DraftOrderModal } from './components/DraftOrderModal';
 import confetti from 'canvas-confetti';
 
 export function App() {
-  // 1. Teams Configuration State
+  // 1. Teams Configuration State (Defaulting to Slot #7 for Agent Chaplo)
   const [teams, setTeams] = useState<TeamConfig[]>(() => {
-    const saved = localStorage.getItem('agent_chaplo_teams_2026');
+    const saved = localStorage.getItem('agent_chaplo_teams_2026_v2') || localStorage.getItem('agent_chaplo_teams_2026');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length === 12) return parsed;
+        if (Array.isArray(parsed) && parsed.length === 12) {
+          // If Team 7 isn't user (e.g. from old draft order), update to Slot 7 as user
+          const hasUserAt7 = parsed.some((t) => t.slot === 7 && t.isUser);
+          if (!hasUserAt7) {
+            return defaultTeams;
+          }
+          return parsed;
+        }
       } catch (e) {
         return defaultTeams;
       }

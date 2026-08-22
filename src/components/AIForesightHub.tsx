@@ -50,15 +50,21 @@ export const AIForesightHub: React.FC<AIForesightHubProps> = ({
   const [h2hSearch, setH2HSearch] = useState<string>('');
 
   // Top recommendations for the team on the clock
-  const topBPA = availablePlayers[0];
-  const topPOADP = [...availablePlayers].sort((a, b) => b.POADP_Points_Over_ADP - a.POADP_Points_Over_ADP)[0];
-  const topCliff = [...availablePlayers].sort((a, b) => (b.Dynamic_Dropoff || 0) - (a.Dynamic_Dropoff || 0))[0];
+  const topBPA = availablePlayers?.[0];
+  const topPOADP = availablePlayers && availablePlayers.length > 0 
+    ? [...availablePlayers].sort((a, b) => (b.POADP_Points_Over_ADP || 0) - (a.POADP_Points_Over_ADP || 0))[0] 
+    : undefined;
+  const topCliff = availablePlayers && availablePlayers.length > 0 
+    ? [...availablePlayers].sort((a, b) => (b.Dynamic_Dropoff || 0) - (a.Dynamic_Dropoff || 0))[0] 
+    : undefined;
 
   // Priority Pick (Green Light)
   const priorityPick = topBPA;
 
   // Contingency Pivot (Yellow Light)
-  const contingencyPick = availablePlayers.find((p) => p.Pos !== priorityPick?.Pos) || topPOADP || availablePlayers[1];
+  const contingencyPick = availablePlayers && availablePlayers.length > 1
+    ? (availablePlayers.find((p) => p.Pos !== priorityPick?.Pos) || topPOADP || availablePlayers[1])
+    : undefined;
 
   // Whole-Team Projected PPG Analysis for the active drafting team
   const activeTeamAnalysis = useMemo(() => {
@@ -423,42 +429,50 @@ export const AIForesightHub: React.FC<AIForesightHubProps> = ({
         </div>
 
         <div className="mt-4 space-y-3">
-          {lookaheadPredictions.map((pred) => (
-            <div
-              key={pred.pickNumber}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-950/60 p-3.5 transition-all hover:border-neutral-700"
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-800 font-mono text-xs font-bold text-neutral-300">
-                  #{pred.pickNumber}
-                </span>
-                <div>
-                  <h4 className="font-serif text-sm font-bold text-neutral-200">
-                    {pred.teamName}
-                  </h4>
-                  <span className="text-xs text-neutral-400">
-                    Archetype: {pred.archetype}
-                  </span>
-                </div>
-              </div>
+          {lookaheadPredictions.map((pred) => {
+            const player = pred.predictedPlayer;
+            const playerName = typeof player === 'string' ? player : player?.Player_Name || 'Unknown Player';
+            const playerPos = typeof player === 'string' ? 'FLEX' : player?.Pos || 'FLEX';
+            const playerTier = typeof player === 'string' ? 1 : player?.Position_Tier || 1;
+            const playerPpg = typeof player === 'string' ? '' : player?.W1_4_Proj_PPG ? ` (${player.W1_4_Proj_PPG} PPG)` : '';
 
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-neutral-300">
-                      Likely Target: <strong className="text-amber-400">{pred.predictedPos}</strong>
-                    </span>
-                    <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-indigo-300">
-                      {pred.confidenceScore}% Prob
+            return (
+              <div
+                key={pred.pickNumber}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-950/60 p-3.5 transition-all hover:border-neutral-700"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-800 font-mono text-xs font-bold text-neutral-300">
+                    #{pred.pickNumber}
+                  </span>
+                  <div>
+                    <h4 className="font-serif text-sm font-bold text-neutral-200">
+                      {pred.teamName}
+                    </h4>
+                    <span className="text-xs text-neutral-400">
+                      Archetype: {pred.archetype}
                     </span>
                   </div>
-                  <span className="text-[11px] text-neutral-500 block">
-                    Expected: {pred.predictedPlayer}
-                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <span className="text-xs font-semibold text-neutral-300">
+                        Likely Target: <strong className="text-amber-400">{playerPos}</strong>
+                      </span>
+                      <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-indigo-300">
+                        Tier {playerTier}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-neutral-400 block font-serif font-bold">
+                      Expected: {playerName}{playerPpg}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

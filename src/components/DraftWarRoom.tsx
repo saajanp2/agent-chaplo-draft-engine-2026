@@ -18,9 +18,19 @@ import {
   Layers, 
   Flame, 
   Zap, 
-  SlidersHorizontal 
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+  BarChart2,
+  Award
 } from 'lucide-react';
 import { Player, TeamConfig, DraftPick, RosterSlots, Position } from '../types';
+import { 
+  analyzeAllTeamsPpg, 
+  analyzeTeamPpg, 
+  calculateMarginalPpgLift, 
+  TeamPpgAnalysis 
+} from '../utils/teamAnalytics';
 
 interface DraftWarRoomProps {
   teams: TeamConfig[];
@@ -54,6 +64,7 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
   const [selectedTargetTeamId, setSelectedTargetTeamId] = useState<number>(activeTeamId);
   const [activePosFilter, setActivePosFilter] = useState<string>('ALL');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showStandings, setShowStandings] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Per-team inline add search state
@@ -110,6 +121,19 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
 
     return stats;
   }, [availablePlayers]);
+
+  // League-wide Team PPG Analyses
+  const allTeamsAnalysis = useMemo(() => {
+    return analyzeAllTeamsPpg(teams, picks);
+  }, [teams, picks]);
+
+  const analysisByTeamId = useMemo(() => {
+    const map = new Map<number, TeamPpgAnalysis>();
+    allTeamsAnalysis.forEach((a) => map.set(a.teamId, a));
+    return map;
+  }, [allTeamsAnalysis]);
+
+  const targetTeam = teams.find((t) => t.id === selectedTargetTeamId) || teams[0];
 
   // Filtered available players for top search bar
   const filteredAvailablePlayers = useMemo(() => {
@@ -525,58 +549,80 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
                       No available players match current position filter & search "{searchQuery}"
                     </div>
                   ) : (
-                    filteredAvailablePlayers.map((player, idx) => (
-                      <div
-                        key={player.Player_ID}
-                        onClick={() => {
-                          onDraftPlayer(player, selectedTargetTeamId);
-                          setSearchQuery('');
-                          setIsSearchOpen(false);
-                        }}
-                        className={`flex items-center justify-between rounded-lg p-2 text-xs transition-all cursor-pointer hover:bg-amber-500/20 hover:text-white ${
-                          idx === 0 ? 'bg-neutral-800/60' : ''
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="font-mono text-[11px] font-bold text-neutral-400">
-                            #{player.Offline_Draft_Rank}
-                          </span>
-                          <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ring-1 ${posBadgeColor(player.Pos)}`}>
-                            {player.Pos}
-                          </span>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <strong className="text-white font-serif block truncate">
-                                {player.Player_Name}
-                              </strong>
-                              <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">
-                                Tier {player.Position_Tier}
+                    filteredAvailablePlayers.map((player, idx) => {
+                      const lift = calculateMarginalPpgLift(player, targetTeam, picks);
+
+                      return (
+                        <div
+                          key={player.Player_ID}
+                          onClick={() => {
+                            onDraftPlayer(player, selectedTargetTeamId);
+                            setSearchQuery('');
+                            setIsSearchOpen(false);
+                          }}
+                          className={`flex flex-col gap-1.5 rounded-lg p-2 text-xs transition-all cursor-pointer hover:bg-amber-500/20 hover:text-white ${
+                            idx === 0 ? 'bg-neutral-800/60' : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="font-mono text-[11px] font-bold text-neutral-400">
+                                #{player.Offline_Draft_Rank}
                               </span>
+                              <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ring-1 ${posBadgeColor(player.Pos)}`}>
+                                {player.Pos}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <strong className="text-white font-serif block truncate">
+                                    {player.Player_Name}
+                                  </strong>
+                                  <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">
+                                    Tier {player.Position_Tier}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-neutral-400 truncate block">
+                                  {player.Team} • {player.Sleeper_Tag}
+                                </span>
+                              </div>
                             </div>
-                            <span className="text-[10px] text-neutral-400 truncate block">
-                              {player.Team} • {player.Sleeper_Tag}
+
+                            <div className="flex items-center gap-3 shrink-0 ml-2">
+                              <div className="text-right">
+                                <span className="font-mono text-xs font-bold text-emerald-400">
+                                  {player.W1_4_Proj_PPG} PPG
+                                </span>
+                                <span className="text-[10px] text-neutral-500 block">
+                                  POADP {player.POADP_Points_Over_ADP >= 0 ? `+${player.POADP_Points_Over_ADP}` : player.POADP_Points_Over_ADP}
+                                </span>
+                              </div>
+
+                              <button
+                                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow hover:bg-emerald-500"
+                              >
+                                Draft
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Marginal Team PPG Lift Indicator (Late Round Optimization) */}
+                          <div className="flex items-center gap-2 rounded bg-neutral-950/80 px-2 py-1 text-[11px]">
+                            {lift.marginalPpgGain > 0 ? (
+                              <span className="rounded bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 border border-emerald-500/30 shrink-0">
+                                +{lift.marginalPpgGain} PPG to {lift.targetSlot}
+                              </span>
+                            ) : (
+                              <span className="rounded bg-indigo-500/20 text-indigo-300 font-medium px-1.5 py-0.2 shrink-0">
+                                Bench Ceiling: {player.Ceiling_PPG_26 || 16} PPG
+                              </span>
+                            )}
+                            <span className="text-neutral-400 italic truncate text-[10px]">
+                              "{lift.description}"
                             </span>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-3 shrink-0 ml-2">
-                          <div className="text-right">
-                            <span className="font-mono text-xs font-bold text-emerald-400">
-                              {player.W1_4_Proj_PPG} PPG
-                            </span>
-                            <span className="text-[10px] text-neutral-500 block">
-                              POADP {player.POADP_Points_Over_ADP >= 0 ? `+${player.POADP_Points_Over_ADP}` : player.POADP_Points_Over_ADP}
-                            </span>
-                          </div>
-
-                          <button
-                            className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow hover:bg-emerald-500"
-                          >
-                            Draft
-                          </button>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               )}
@@ -619,28 +665,118 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
         </div>
       </div>
 
+      {/* 2.5. League Standings & Projected Team PPG Analysis Drawer */}
+      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-4 shadow-xl backdrop-blur-xl space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/30">
+              <BarChart2 className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <h3 className="font-serif text-sm font-bold text-neutral-100">
+                League Projected Team PPG Standings & Power Rankings
+              </h3>
+              <p className="text-[11px] text-neutral-400">
+                Real-time total starting 10 lineup PPG analysis across all 12 teams to optimize late-round value
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowStandings(!showStandings)}
+            className="flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-xs font-semibold text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all"
+          >
+            <span>{showStandings ? 'Hide Standings' : 'View Full Standings'}</span>
+            {showStandings ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+
+        {/* Collapsible Standings Table */}
+        {showStandings && (
+          <div className="overflow-x-auto pt-2 border-t border-neutral-800/80 animate-fadeIn">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-neutral-800 bg-neutral-950/70 text-[10px] uppercase tracking-wider text-neutral-400">
+                  <th className="py-2.5 px-3">Rank</th>
+                  <th className="py-2.5 px-3">Team</th>
+                  <th className="py-2.5 px-2 text-center">Starting 10 PPG</th>
+                  <th className="py-2.5 px-2 text-center">W1–4 PPG</th>
+                  <th className="py-2.5 px-2 text-center">QB</th>
+                  <th className="py-2.5 px-2 text-center">RB Room</th>
+                  <th className="py-2.5 px-2 text-center">WR Room</th>
+                  <th className="py-2.5 px-2 text-center">TE</th>
+                  <th className="py-2.5 px-2 text-center">FLEX</th>
+                  <th className="py-2.5 px-2 text-center">K/DEF</th>
+                  <th className="py-2.5 px-3 text-right">Season Pts</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-800/60 font-mono">
+                {allTeamsAnalysis.map((analysis) => (
+                  <tr
+                    key={analysis.teamId}
+                    className={`transition-colors ${
+                      analysis.isUser
+                        ? 'bg-amber-950/20 font-bold'
+                        : 'hover:bg-neutral-800/40'
+                    }`}
+                  >
+                    <td className="py-2 px-3">
+                      <span className={`inline-flex items-center justify-center h-5 w-6 rounded text-[10px] font-bold ${
+                        analysis.rankInLeague === 1
+                          ? 'bg-amber-500 text-neutral-950 font-black'
+                          : analysis.rankInLeague <= 3
+                          ? 'bg-indigo-500/20 text-indigo-300'
+                          : 'bg-neutral-800 text-neutral-400'
+                      }`}>
+                        #{analysis.rankInLeague}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 font-serif font-bold text-neutral-200">
+                      {analysis.teamName} {analysis.isUser && <span className="text-amber-400 text-[10px] font-sans">★ MY TEAM</span>}
+                    </td>
+                    <td className="py-2 px-2 text-center font-bold text-emerald-400 text-xs">
+                      {analysis.startingPpg} PPG
+                    </td>
+                    <td className="py-2 px-2 text-center text-neutral-300">
+                      {analysis.w14StartingPpg}
+                    </td>
+                    <td className="py-2 px-2 text-center text-purple-300">
+                      {analysis.positionalPpg.QB || '-'}
+                    </td>
+                    <td className="py-2 px-2 text-center text-blue-300">
+                      {analysis.positionalPpg.RB || '-'}
+                    </td>
+                    <td className="py-2 px-2 text-center text-amber-300">
+                      {analysis.positionalPpg.WR || '-'}
+                    </td>
+                    <td className="py-2 px-2 text-center text-emerald-300">
+                      {analysis.positionalPpg.TE || '-'}
+                    </td>
+                    <td className="py-2 px-2 text-center text-indigo-300">
+                      {analysis.positionalPpg.FLEX || '-'}
+                    </td>
+                    <td className="py-2 px-2 text-center text-teal-300">
+                      {(analysis.positionalPpg.K + analysis.positionalPpg.DEF).toFixed(1)}
+                    </td>
+                    <td className="py-2 px-3 text-right text-neutral-300 font-sans">
+                      {analysis.totalSeasonPts} pts
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* 3. 12-Team Responsive Grid Board */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {teams.map((team) => {
           const isOnClock = team.id === activeTeamId && picks.length < 180;
           const isDragOver = dragOverTeamId === team.id;
           const roster = getTeamRoster(team.id);
-          const teamPicks = picks.filter((p) => p.teamId === team.id);
-          
-          const starters = [
-            roster.QB, roster.RB1, roster.RB2, roster.WR1, roster.WR2, 
-            roster.TE, roster.FLEX1, roster.FLEX2, roster.K, roster.DEF
-          ].filter(Boolean) as Player[];
-
-          const totalProjSeasonPts = teamPicks.reduce((sum, p) => sum + (p.player.Proj_Fantasy_Pts_2026 || 0), 0);
-          const startersW14AvgPPG = starters.length > 0 
-            ? Number((starters.reduce((sum, p) => sum + p.W1_4_Proj_PPG, 0)).toFixed(1))
-            : 0;
-          const netPOADPSurplus = Number(
-            teamPicks.reduce((sum, p) => sum + (p.player.POADP_Points_Over_ADP || 0), 0).toFixed(1)
-          );
-
           const isInlineSearchOpen = inlineTeamSearchId === team.id;
+          const analysis = analysisByTeamId.get(team.id);
 
           return (
             <div
@@ -798,23 +934,59 @@ export const DraftWarRoom: React.FC<DraftWarRoomProps> = ({
                 </div>
               )}
 
-              {/* Real-time Team Metrics Summary Bar */}
-              <div className="my-2.5 grid grid-cols-3 gap-1 rounded-xl bg-neutral-950/80 p-2 text-center text-[10px]">
-                <div>
-                  <span className="text-neutral-500 block uppercase font-medium">W1–4 PPG</span>
-                  <strong className="font-mono text-emerald-400 text-xs">{startersW14AvgPPG}</strong>
+              {/* Real-time Whole-Team Projected PPG Summary Bar */}
+              {analysis && (
+                <div className="my-2.5 space-y-1.5 rounded-xl bg-neutral-950/90 p-2.5 border border-neutral-800/80">
+                  {/* Top Row: Total Starting PPG + League Rank */}
+                  <div className="flex items-center justify-between pb-1.5 border-b border-neutral-800/60 text-xs">
+                    <div>
+                      <span className="text-[10px] text-neutral-400 uppercase font-medium block">Starting 10 Total</span>
+                      <strong className="font-mono text-emerald-400 text-sm font-bold">
+                        {analysis.startingPpg} PPG
+                      </strong>
+                    </div>
+                    <div className="text-right">
+                      <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                        analysis.rankInLeague === 1
+                          ? 'bg-amber-500 text-neutral-950 font-black'
+                          : analysis.rankInLeague <= 3
+                          ? 'bg-indigo-500/20 text-indigo-300'
+                          : 'bg-neutral-800 text-neutral-400'
+                      }`}>
+                        <Award className="h-3 w-3" />
+                        <span>Rank #{analysis.rankInLeague} / 12</span>
+                      </span>
+                      <span className="text-[10px] text-neutral-500 block">
+                        {analysis.filledStartersCount}/10 Starters ({analysis.totalSeasonPts} pts)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Positional Room PPG Breakdown Chips */}
+                  <div className="grid grid-cols-5 gap-1 text-center font-mono text-[10px] pt-0.5">
+                    <div className="rounded bg-purple-950/30 border border-purple-500/20 py-0.5" title="QB Room Projected PPG">
+                      <span className="text-[9px] text-purple-400 block font-bold">QB</span>
+                      <strong className="text-purple-200">{analysis.positionalPpg.QB}</strong>
+                    </div>
+                    <div className="rounded bg-blue-950/30 border border-blue-500/20 py-0.5" title="RB Room Projected PPG">
+                      <span className="text-[9px] text-blue-400 block font-bold">RB</span>
+                      <strong className="text-blue-200">{analysis.positionalPpg.RB}</strong>
+                    </div>
+                    <div className="rounded bg-amber-950/30 border border-amber-500/20 py-0.5" title="WR Room Projected PPG">
+                      <span className="text-[9px] text-amber-400 block font-bold">WR</span>
+                      <strong className="text-amber-200">{analysis.positionalPpg.WR}</strong>
+                    </div>
+                    <div className="rounded bg-emerald-950/30 border border-emerald-500/20 py-0.5" title="TE Room Projected PPG">
+                      <span className="text-[9px] text-emerald-400 block font-bold">TE</span>
+                      <strong className="text-emerald-200">{analysis.positionalPpg.TE}</strong>
+                    </div>
+                    <div className="rounded bg-indigo-950/30 border border-indigo-500/20 py-0.5" title="2-FLEX Room Projected PPG">
+                      <span className="text-[9px] text-indigo-400 block font-bold">FLEX</span>
+                      <strong className="text-indigo-200">{analysis.positionalPpg.FLEX}</strong>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-neutral-500 block uppercase font-medium">Season Pts</span>
-                  <strong className="font-mono text-neutral-200 text-xs">{Math.round(totalProjSeasonPts)}</strong>
-                </div>
-                <div>
-                  <span className="text-neutral-500 block uppercase font-medium">POADP</span>
-                  <strong className={`font-mono text-xs ${netPOADPSurplus >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {netPOADPSurplus > 0 ? `+${netPOADPSurplus}` : netPOADPSurplus}
-                  </strong>
-                </div>
-              </div>
+              )}
 
               {/* Roster Slots List */}
               <div className="space-y-1.5 flex-1">

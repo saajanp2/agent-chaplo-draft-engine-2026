@@ -414,6 +414,8 @@ export function App() {
             activeCategory={activeCategory}
             onSelectCategory={setActiveCategory}
             activeTeamName={activeTeam.name}
+            activeTeam={activeTeam}
+            allPicks={picks}
           />
         )}
 
@@ -438,6 +440,8 @@ export function App() {
             availablePlayers={availablePlayers}
             myTeam={myTeamPlayers}
             activeTeam={activeTeam}
+            allTeams={teams}
+            allPicks={picks}
             currentPickNumber={currentPickInfo.overallPick}
             currentRound={currentRound}
             lookaheadPredictions={lookaheadPredictions}

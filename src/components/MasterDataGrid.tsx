@@ -17,7 +17,8 @@ import {
   SlidersHorizontal,
   X
 } from 'lucide-react';
-import { Player, Position, W1_4_Category } from '../types';
+import { Player, Position, W1_4_Category, TeamConfig, DraftPick } from '../types';
+import { calculateMarginalPpgLift } from '../utils/teamAnalytics';
 
 interface MasterDataGridProps {
   players: Player[];
@@ -31,6 +32,8 @@ interface MasterDataGridProps {
   activeCategory: string;
   onSelectCategory: (cat: string) => void;
   activeTeamName: string;
+  activeTeam?: TeamConfig;
+  allPicks?: DraftPick[];
 }
 
 export const MasterDataGrid: React.FC<MasterDataGridProps> = ({
@@ -45,6 +48,8 @@ export const MasterDataGrid: React.FC<MasterDataGridProps> = ({
   activeCategory,
   onSelectCategory,
   activeTeamName,
+  activeTeam,
+  allPicks = [],
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<keyof Player>('Offline_Draft_Rank');
@@ -337,10 +342,21 @@ export const MasterDataGrid: React.FC<MasterDataGridProps> = ({
                                 <span className="text-[10px] text-neutral-500">({player.Age}y)</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-1 text-[11px] text-neutral-400">
+                            <div className="flex items-center gap-1 text-[11px] text-neutral-400 flex-wrap">
                               <span className="text-amber-400/90 font-medium">{player.Sleeper_Tag}</span>
                               <span>•</span>
                               <span className="text-neutral-500">Tier {player.Position_Tier}</span>
+                              {activeTeam && !isDrafted && (() => {
+                                const lift = calculateMarginalPpgLift(player, activeTeam, allPicks);
+                                if (lift.marginalPpgGain > 0) {
+                                  return (
+                                    <span className="ml-1 rounded bg-emerald-500/20 text-emerald-300 font-bold px-1 py-0.2 text-[9px] border border-emerald-500/30">
+                                      +{lift.marginalPpgGain} PPG ({lift.targetSlot})
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </div>
                           </div>
                         </td>

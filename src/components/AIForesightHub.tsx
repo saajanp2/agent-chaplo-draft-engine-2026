@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -11,15 +11,22 @@ import {
   ShieldAlert, 
   Flame, 
   Filter,
-  UserCheck
+  UserCheck,
+  BarChart2,
+  Award,
+  Target,
+  ChevronRight
 } from 'lucide-react';
-import { Player, TeamConfig, LookaheadPrediction, H2HRule, Position } from '../types';
+import { Player, TeamConfig, LookaheadPrediction, H2HRule, Position, DraftPick } from '../types';
 import { h2hRules } from '../data';
+import { analyzeTeamPpg, calculateMarginalPpgLift, analyzeAllTeamsPpg } from '../utils/teamAnalytics';
 
 interface AIForesightHubProps {
   availablePlayers: Player[];
   myTeam: Player[];
   activeTeam: TeamConfig;
+  allTeams?: TeamConfig[];
+  allPicks?: DraftPick[];
   currentPickNumber: number; // 1 to 180
   currentRound: number; // 1 to 15
   lookaheadPredictions: LookaheadPrediction[];
@@ -31,6 +38,8 @@ export const AIForesightHub: React.FC<AIForesightHubProps> = ({
   availablePlayers,
   myTeam,
   activeTeam,
+  allTeams = [],
+  allPicks = [],
   currentPickNumber,
   currentRound,
   lookaheadPredictions,
@@ -49,8 +58,37 @@ export const AIForesightHub: React.FC<AIForesightHubProps> = ({
   const priorityPick = topBPA;
 
   // Contingency Pivot (Yellow Light)
-  // Find top alternative player from a different position or top surplus
   const contingencyPick = availablePlayers.find((p) => p.Pos !== priorityPick?.Pos) || topPOADP || availablePlayers[1];
+
+  // Whole-Team Projected PPG Analysis for the active drafting team
+  const activeTeamAnalysis = useMemo(() => {
+    return analyzeTeamPpg(activeTeam, allPicks);
+  }, [activeTeam, allPicks]);
+
+  // League-wide Team PPG Analyses
+  const allTeamsAnalysis = useMemo(() => {
+    if (allTeams.length === 0) return [];
+    return analyzeAllTeamsPpg(allTeams, allPicks);
+  }, [allTeams, allPicks]);
+
+  // Calculate Late-Round Marginal Team PPG Value Picks
+  const lateRoundValuePicks = useMemo(() => {
+    return availablePlayers
+      .map((player) => {
+        const lift = calculateMarginalPpgLift(player, activeTeam, allPicks);
+        return {
+          player,
+          lift,
+        };
+      })
+      .sort((a, b) => {
+        if (b.lift.marginalPpgGain !== a.lift.marginalPpgGain) {
+          return b.lift.marginalPpgGain - a.lift.marginalPpgGain;
+        }
+        return (b.player.Proj_PPG_26 || 0) - (a.player.Proj_PPG_26 || 0);
+      })
+      .slice(0, 4);
+  }, [availablePlayers, activeTeam, allPicks]);
 
   // Contextual Round Trigger Message (Tailored for Pick #7 Turn Dynamics)
   let roundTrigger = "Round 1 (Pick 7): Target foundational alpha anchor (Tier 1 RB bellcow like Breece/Saquon/Bijan or 30%+ target share WR1 like JJ/CeeDee).";
@@ -80,23 +118,23 @@ export const AIForesightHub: React.FC<AIForesightHubProps> = ({
     return matchesCategory && matchesSearch;
   });
 
-  const categories = ['ALL', 'Elite WR', 'TE Cheat Code', 'Dead Zone RB', 'Konami QB', 'Flex Target', 'Kicker & DEF'];
+  const categories = ['ALL', 'RB', 'WR', 'TE', 'QB', 'FLEX', 'DRAFT_SLOT'];
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* SECTION 1: Live Pick Advisor Card */}
-      <section className="rounded-2xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 via-neutral-900/80 to-neutral-950/90 p-5 shadow-2xl backdrop-blur-xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 pb-3.5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/40 shadow-inner">
-              <Sparkles className="h-5 w-5 animate-pulse" />
+      {/* 1. Live Pick Advisor (Active Team On The Clock) */}
+      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-5 shadow-xl backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40">
+              <Sparkles className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-serif text-base sm:text-lg font-bold text-neutral-100">
+                <h3 className="font-serif text-lg font-bold text-neutral-100">
                   Live Pick Advisor
                 </h3>
-                <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-300 ring-1 ring-indigo-500/30">
+                <span className="rounded bg-neutral-800 px-2 py-0.5 font-mono text-xs font-semibold text-neutral-300">
                   Pick #{currentPickNumber} • Round {currentRound}
                 </span>
               </div>
@@ -224,7 +262,7 @@ export const AIForesightHub: React.FC<AIForesightHubProps> = ({
                   onClick={() => onDraftPlayer(contingencyPick)}
                   className="flex items-center gap-1 rounded-lg bg-amber-600 px-3 py-1 text-xs font-bold text-white hover:bg-amber-500 shadow-md shadow-amber-600/20"
                 >
-                  <span>Draft Pivot</span>
+                  <span>Draft Player</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -233,69 +271,203 @@ export const AIForesightHub: React.FC<AIForesightHubProps> = ({
         </div>
       </section>
 
-      {/* SECTION 2: Projected Next 3 Picks (Expert Lookahead Engine) */}
-      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-5 shadow-xl backdrop-blur-md">
-        <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/30">
-              <TrendingUp className="h-4.5 w-4.5" />
+      {/* 2. Whole-Team Projected PPG Analyzer & Late-Round Value Maximizer */}
+      <section className="rounded-2xl border border-indigo-500/40 bg-gradient-to-br from-neutral-900 via-neutral-900 to-indigo-950/40 p-5 shadow-xl backdrop-blur-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/40">
+              <BarChart2 className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-serif text-base font-bold text-neutral-100">
-                Projected Next 3 Picks (Expert Lookahead Engine)
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-serif text-lg font-bold text-neutral-100">
+                  Whole-Team Projected Points (PPG) Engine & Late-Round Maximizer
+                </h3>
+                <span className="rounded bg-indigo-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-indigo-300">
+                  10 STARTERS + 5 BENCH
+                </span>
+              </div>
               <p className="text-xs text-neutral-400">
-                Forecasts upcoming draft board trajectory using manager archetypes & BPA/POADP surplus models
+                Calculates starting lineup scoring trajectory and identifies highest marginal PPG upgrade candidates for late rounds
               </p>
             </div>
           </div>
-          <span className="rounded bg-purple-500/15 px-2 py-0.5 text-[10px] font-bold text-purple-300 ring-1 ring-purple-500/30">
-            N+3 FORECAST
-          </span>
+
+          {/* Active Team PPG Score Badge */}
+          <div className="flex items-center gap-2 bg-neutral-950 px-3 py-1.5 rounded-xl border border-indigo-500/30">
+            <div>
+              <span className="text-[10px] text-neutral-400 block uppercase font-medium">Starting 10 Projected</span>
+              <strong className="font-mono text-emerald-400 text-sm font-black">
+                {activeTeamAnalysis.startingPpg} PPG
+              </strong>
+            </div>
+            <span className="text-neutral-600">|</span>
+            <div className="text-right">
+              <span className="text-[10px] text-neutral-400 block uppercase font-medium">Starters Filled</span>
+              <span className="font-mono text-indigo-300 text-xs font-bold">
+                {activeTeamAnalysis.filledStartersCount}/10
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          {lookaheadPredictions.map((pred, idx) => (
-            <div 
-              key={idx}
-              className="relative overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950/70 p-3.5 transition-all hover:border-purple-500/40 hover:bg-neutral-900/60"
-            >
-              <div className="flex items-center justify-between pb-2 border-b border-neutral-800/80">
-                <span className="font-mono text-xs font-extrabold text-purple-400">
-                  Pick #{pred.pickNumber} (Rd {pred.round}.{pred.pickInRound})
-                </span>
-                <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-300">
-                  {pred.teamName}
-                </span>
-              </div>
+        {/* Positional PPG Room Breakdown Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="rounded-xl border border-purple-500/30 bg-purple-950/20 p-2.5 text-center">
+            <span className="text-[10px] font-bold uppercase text-purple-400 block">QB Room</span>
+            <strong className="font-mono text-sm text-purple-200">{activeTeamAnalysis.positionalPpg.QB} PPG</strong>
+          </div>
+          <div className="rounded-xl border border-blue-500/30 bg-blue-950/20 p-2.5 text-center">
+            <span className="text-[10px] font-bold uppercase text-blue-400 block">RB Room (RB1+RB2)</span>
+            <strong className="font-mono text-sm text-blue-200">{activeTeamAnalysis.positionalPpg.RB} PPG</strong>
+          </div>
+          <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-2.5 text-center">
+            <span className="text-[10px] font-bold uppercase text-amber-400 block">WR Room (WR1+WR2)</span>
+            <strong className="font-mono text-sm text-amber-200">{activeTeamAnalysis.positionalPpg.WR} PPG</strong>
+          </div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-2.5 text-center">
+            <span className="text-[10px] font-bold uppercase text-emerald-400 block">TE Room</span>
+            <strong className="font-mono text-sm text-emerald-200">{activeTeamAnalysis.positionalPpg.TE} PPG</strong>
+          </div>
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-950/20 p-2.5 text-center">
+            <span className="text-[10px] font-bold uppercase text-indigo-400 block">2-FLEX Room</span>
+            <strong className="font-mono text-sm text-indigo-200">{activeTeamAnalysis.positionalPpg.FLEX} PPG</strong>
+          </div>
+          <div className="rounded-xl border border-teal-500/30 bg-teal-950/20 p-2.5 text-center">
+            <span className="text-[10px] font-bold uppercase text-teal-400 block">K + DEF Room</span>
+            <strong className="font-mono text-sm text-teal-200">
+              {(activeTeamAnalysis.positionalPpg.K + activeTeamAnalysis.positionalPpg.DEF).toFixed(1)} PPG
+            </strong>
+          </div>
+        </div>
 
-              <div className="mt-2.5 flex items-center justify-between">
+        {/* Highest Marginal Team PPG Upgrade Candidates for Current Pick */}
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Target className="h-4 w-4 text-emerald-400" />
+              <h4 className="font-serif text-sm font-bold text-white">
+                Top Marginal PPG Upgrade Candidates for {activeTeam.name}
+              </h4>
+            </div>
+            {activeTeamAnalysis.weakestSlot && (
+              <span className="text-[11px] text-amber-400">
+                Priority Need: <strong>{activeTeamAnalysis.weakestSlot.slot}</strong> ({activeTeamAnalysis.weakestSlot.ppg > 0 ? `${activeTeamAnalysis.weakestSlot.ppg} PPG` : 'Empty'})
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {lateRoundValuePicks.map(({ player, lift }) => (
+              <div
+                key={player.Player_ID}
+                className="flex flex-col justify-between rounded-xl border border-neutral-800 bg-neutral-950/80 p-3 hover:border-emerald-500/50 transition-all space-y-2"
+              >
                 <div>
-                  <h5 className="font-serif text-sm font-bold text-neutral-100">{pred.predictedPlayer.Player_Name}</h5>
-                  <p className="text-[11px] text-neutral-400">
-                    {pred.predictedPlayer.Pos} • {pred.predictedPlayer.Team}
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] text-neutral-400 font-bold">#{player.Offline_Draft_Rank}</span>
+                    <span className="rounded bg-neutral-800 px-1.5 py-0.2 font-mono text-[10px] text-neutral-300 font-bold">
+                      {player.Pos}
+                    </span>
+                  </div>
+                  <h5 
+                    onClick={() => onSelectPlayer(player)}
+                    className="font-serif text-sm font-bold text-white hover:text-emerald-400 cursor-pointer truncate mt-1"
+                  >
+                    {player.Player_Name}
+                  </h5>
+                  <p className="text-[10px] text-neutral-400">{player.Team} • Tier {player.Position_Tier}</p>
+                </div>
+
+                <div className="space-y-1.5 border-t border-neutral-800/80 pt-2 text-xs">
+                  {lift.marginalPpgGain > 0 ? (
+                    <div className="rounded bg-emerald-500/20 text-emerald-300 font-bold px-2 py-1 border border-emerald-500/30 text-center font-mono">
+                      +{lift.marginalPpgGain} PPG to {lift.targetSlot}
+                    </div>
+                  ) : (
+                    <div className="rounded bg-indigo-500/20 text-indigo-300 font-medium px-2 py-1 text-center font-mono text-[11px]">
+                      Bench Ceiling: {player.Ceiling_PPG_26 || 16} PPG
+                    </div>
+                  )}
+                  <p className="text-[10px] text-neutral-400 italic line-clamp-2">
+                    "{lift.description}"
                   </p>
                 </div>
-                <span className="font-mono text-xs font-bold text-emerald-400">
-                  {pred.predictedPlayer.W1_4_Proj_PPG} PPG
+
+                <button
+                  onClick={() => onDraftPlayer(player)}
+                  className="w-full flex items-center justify-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 py-1.5 text-xs font-bold text-white shadow"
+                >
+                  <span>Draft (+{lift.marginalPpgGain > 0 ? lift.marginalPpgGain : player.Proj_PPG_26} PPG)</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 3. N+3 Multi-Step Lookahead Forecast */}
+      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-5 shadow-xl backdrop-blur-xl">
+        <div className="flex items-center gap-3 border-b border-neutral-800 pb-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/40">
+            <Layers className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-serif text-lg font-bold text-neutral-100">
+              N+3 Multi-Step Draft Lookahead Forecast
+            </h3>
+            <p className="text-xs text-neutral-400">
+              Predictive simulation forecasting picks between now and your next turn at Pick #18 (2.06 turn)
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {lookaheadPredictions.map((pred) => (
+            <div
+              key={pred.pickNumber}
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-950/60 p-3.5 transition-all hover:border-neutral-700"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-800 font-mono text-xs font-bold text-neutral-300">
+                  #{pred.pickNumber}
                 </span>
+                <div>
+                  <h4 className="font-serif text-sm font-bold text-neutral-200">
+                    {pred.teamName}
+                  </h4>
+                  <span className="text-xs text-neutral-400">
+                    Archetype: {pred.archetype}
+                  </span>
+                </div>
               </div>
 
-              <div className="mt-2 text-[11px] text-neutral-400 leading-relaxed bg-neutral-900/60 rounded-lg p-2 border border-neutral-800/50">
-                <span className="text-neutral-500 font-semibold uppercase text-[9px] block">Forecast Rationale</span>
-                {pred.reasoning}
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-neutral-300">
+                      Likely Target: <strong className="text-amber-400">{pred.predictedPos}</strong>
+                    </span>
+                    <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-indigo-300">
+                      {pred.confidenceScore}% Prob
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-neutral-500 block">
+                    Expected: {pred.predictedPlayer}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* SECTION 3: Golden Head-to-Head Cross-Reference Matrix */}
-      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-5 shadow-xl backdrop-blur-md">
+      {/* 4. Golden Head-to-Head Cross-Reference Decision Matrix */}
+      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-5 shadow-xl backdrop-blur-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800 pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30">
-              <Zap className="h-4.5 w-4.5" />
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40">
+              <Flame className="h-5 w-5" />
             </div>
             <div>
               <h3 className="font-serif text-base font-bold text-neutral-100">
